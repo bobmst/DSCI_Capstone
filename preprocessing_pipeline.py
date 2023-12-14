@@ -59,13 +59,15 @@ def process_audio(signal, sr, length=15, n_fft=2048, n_mels=128, n_mfcc=20):
     """
     Process audio signal
     """
-    clean_signal = pad_trim_audio(signal, sr, length)
-    spectrogram = compute_spectrogram(clean_signal, n_fft)
+    noise_reducded = reduce_noise(signal, sr)
+    clean_signal = pad_trim_audio(noise_reducded, sr, length=length)
+    spectrogram = compute_spectrogram(clean_signal, n_fft=n_fft)
     spectrogram = convert_to_decibel(spectrogram)
-    melspectrogram = compute_melspectrogram(spectrogram, n_mels)
-    mfcc = compute_mfcc(melspectrogram, n_mfcc)
+    melspectrogram = compute_melspectrogram(spectrogram, n_mels=n_mels)
+    mfcc = compute_mfcc(melspectrogram, n_mfcc=n_mfcc)
     return (spectrogram, melspectrogram, mfcc)
 
+##TODO (decide if sckit-learn is the framework)
 class NoiseReducer(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
         return self
