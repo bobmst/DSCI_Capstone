@@ -3,6 +3,36 @@ import numpy as np
 import librosa
 import noisereduce as nr
 
+def process_audio(signal, sr, length=15, n_fft=2048, n_mels=128, n_mfcc=20):
+    """
+    Pre-Process audio signal
+
+    Parameters
+    ----------
+    signal: audio signal
+    sr: sampling rate
+    length: length of audio in seconds
+    n_fft: number of FFTs (default=2048)
+    n_mels: number of Mel filters
+    n_mfcc: number of MFCCs
+
+    Returns
+    -------
+    spectrogram: spectrogram of audio signal
+    melspectrogram: mel-spectrogram of audio signal
+    mfcc: MFCC of audio signal
+    """
+
+    noise_reducded = reduce_noise(signal, sr)
+    clean_signal = pad_trim_audio(noise_reducded, sr, length)
+    spectrogram = convert_to_decibel(compute_spectrogram(clean_signal, n_fft))
+    melspectrogram = compute_melspectrogram(spectrogram, n_mels)
+    mfcc = compute_mfcc(melspectrogram, n_mfcc)
+
+    return spectrogram, melspectrogram, mfcc
+
+
+
 def reduce_noise(signal, sr):
     """
     Reduce noise from spectrogram
@@ -55,17 +85,8 @@ def compute_mfcc(melspectrogram, n_mfcc=20):
     spectrogram = librosa.feature.mfcc(S=melspectrogram, n_mfcc=n_mfcc)
     return spectrogram
 
-def process_audio(signal, sr, length=15, n_fft=2048, n_mels=128, n_mfcc=20):
-    """
-    Process audio signal
-    """
-    noise_reducded = reduce_noise(signal, sr)
-    clean_signal = pad_trim_audio(noise_reducded, sr, length)
-    spectrogram = compute_spectrogram(clean_signal, n_fft)
-    spectrogram = convert_to_decibel(spectrogram)
-    melspectrogram = compute_melspectrogram(spectrogram, n_mels)
-    mfcc = compute_mfcc(melspectrogram, n_mfcc)
-    return (spectrogram, melspectrogram, mfcc)
+
+
 
 ##TODO (decide if sckit-learn is the framework)
 class NoiseReducer(BaseEstimator, TransformerMixin):
