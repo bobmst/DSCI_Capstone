@@ -17,7 +17,7 @@ def pad_trim_audio(signal, sr, length=15):
     Pad or trim audio signal to a fixed length
     """
     target_length = sr * length
-    if len(signal) > target_length:
+    if len(signal) >= target_length:
         clean_signal = signal[:target_length]
     elif len(signal) < target_length:
         pad_width = target_length - len(signal)
