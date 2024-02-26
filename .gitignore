@@ -161,3 +161,4 @@ cython_debug/
 # automl temporal files
 /mlruns/*
 /catboost_info/*
+/AutogluonModels/*
