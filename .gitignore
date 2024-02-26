@@ -3,6 +3,8 @@ archive
 .idea
 # Data file
 /data/*
+results
+archive
 
 # exception to the rule
 !data/.gitkeep 
