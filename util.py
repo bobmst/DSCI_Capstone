@@ -27,6 +27,7 @@ def load_pickle(filename):
     return obj
 
 
+## decrypted
 # def load_train(train_dir, train_files):
 #     """_summary_
 
@@ -88,6 +89,24 @@ def load_data(dir_feature, file_prefix, dir_df_index, n_interval=500, flatten=Fa
         logger.info(f"y has been assigned to column 'target'")
         data = pd.concat([X_df, y_series], axis=1)
         logger.debug(f"final dataframe shape{data.shape}")
+        print(f"Loaded dataframe\n with flattend X\n with shape: {data.shape}")
         return data
     else:
+        print(f"Loaded np array\n with X shape: {X.shape}\n with y shape: {y.shape}")
         return X, y
+
+
+def get_cuda_device():
+    import torch
+
+    # Check if GPUs are available
+    if torch.cuda.is_available():
+        # Set the default device to GPU
+        torch.cuda.set_device(0)  # Specify the GPU device index if using multiple GPUs
+        device = torch.device("cuda")
+    else:
+        # Set the default device to CPU
+        # torch.set_default_tensor_type('torch.FloatTensor')
+        device = torch.device("cpu")
+
+    return device
