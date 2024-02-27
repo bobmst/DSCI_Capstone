@@ -1,0 +1,28 @@
+algorithm:
+  name:
+    BaseCNN:
+      num_classes: 200
+  params:
+    batch_size: 64 #256
+    cv: false
+    epochs: 50
+    learning_rate: 0.001
+    patience: 100
+  save_path: "model.pt"
+#algorithm:
+#  name:
+#    CNNLSTMNet:
+#      num_filters_conv1: 64
+#      num_filters_conv2: 128
+#      num_filters_conv3: 256
+#      num_filters_conv4: 512
+#      hidden_size_lstm: 64
+#      dropout_rate: 0.5
+#      num_classes: 15
+#  params:
+#    batch_size: 16
+#    cv: false
+#    epochs: 5
+#    learning_rate: 0.001
+#    patience: 15
+#  save_path: "model.pt"
