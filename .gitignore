@@ -1,6 +1,6 @@
 # Data file
-/data/*
-/model/*
+data/
+model/
 
 # exception to the rule
 !data/.gitkeep 
@@ -159,6 +159,9 @@ cython_debug/
 #.idea/
 
 # automl temporal files
-/mlruns/*
-/catboost_info/*
-/AutogluonModels/*
+mlruns/
+catboost_info/
+AutogluonModels/
+
+# gradio output folder
+flagged/
