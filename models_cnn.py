@@ -52,24 +52,15 @@ class AudioCNN(nn.Module):
         train_losses, val_losses, train_accuracies, val_accuracies = [], [], [], []
 
         for epoch in (pbar := tqdm(range(n_epochs), desc="Epoch")):
-
-            # print(f'\n===== EPOCH {epoch} =====')
-
+            print("epoch: ", epoch)
             training_loss, training_correct, n_samples = 0, 0, 0
 
             self.train()
-            # for batch_idx, (data, label) in (
-            #     pbar_batch := tqdm(
-            #         enumerate(train_loader),
-            #         total=len(train_loader),
-            #     )
-            # ):
             for batch_idx, (data, label) in enumerate(train_loader):
 
                 data = data.to(device)
                 label = label.to(device)
                 output = self.forward(data)
-                # print("Label: ", label)
 
                 loss = criterion(output, label)
                 optimizer.zero_grad()
@@ -79,15 +70,8 @@ class AudioCNN(nn.Module):
 
                 training_loss += loss.item()
                 pred = output.argmax(dim=1, keepdim=True)
-                # print("Pred: ", pred)
-                # print("Pred shape: ", pred.shape)
-
                 training_correct += pred.eq(label.view_as(pred)).sum().item()
                 n_samples += len(label)
-                # print("N samples: ", n_samples)
-
-                # print("Training loss: ", training_loss)
-                # print("Training accuracy: ", training_correct/n_samples)
                 ## DONE with train_loader loop
 
             # batch stats
@@ -108,9 +92,6 @@ class AudioCNN(nn.Module):
                     val_correct += pred.eq(label.view_as(pred)).sum().item()
                     n_samples += len(label)
 
-                    # print("Test loss: ", val_loss)
-                    # print("Test accuracy: ", val_correct / n_samples)
-
                     ## DONE with val_loader loop
 
             # stats per epoch
@@ -118,16 +99,6 @@ class AudioCNN(nn.Module):
             val_losses.append(val_loss)
             val_accuracies.append(avg_val_acc)
 
-            # print("training loss for each epoch is:", training_loss)
-            # print("validation loss for each epoch is:", val_loss)
-            # print("training accuracy for each epoch is:", avg_train_acc)
-            # print("validation accuracy for each epoch is:", avg_val_acc)
-            # pbar.set_description(
-            #     f"Epoch {epoch}: Train Loss: {training_loss}, Train Acc: {avg_train_acc}, Val Loss: {val_loss}, Val Acc: {avg_val_acc}"
-            # )
-            # tqdm.write(
-            #     f"Epoch {epoch}: Train Loss: {training_loss}, Train Acc: {avg_train_acc}, Val Loss: {val_loss}, Val Acc: {avg_val_acc}"
-            # )
             pbar.set_postfix(
                 {
                     # "epoch": epoch,
@@ -136,10 +107,132 @@ class AudioCNN(nn.Module):
                     "Val loss": val_loss,
                     "Val acc": avg_val_acc,
                 }
-                # f"Epoch {epoch}: \nTrain Loss: {training_loss}, Train Acc: {avg_train_acc}, Val Loss: {val_loss}, Val Acc: {avg_val_acc}"
             )
 
             ## Early stopping
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                early_stop_counter = 0
+            else:
+                early_stop_counter += 1
+                if early_stop_counter >= patience:
+                    print("Early stopping triggered.")
+                    break
+
+        torch.save(
+            {
+                "model": self,
+                "epoch": epoch,
+                "batch_size": train_loader.batch_size,
+                "model_state_dict": self.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "train_loss": training_loss,
+                "val_loss": val_loss,
+                "train_acc": avg_train_acc,
+                "val_acc": avg_val_acc,
+                "all_train_loss": train_losses,
+                "all_val_loss": val_losses,
+                "all_train_acc": train_accuracies,
+                "all_val_acc": val_accuracies,
+                "train_loader": train_loader,
+                "val_loader": val_loader,
+            },
+            save_path,
+        )
+
+        self.train_losses = train_losses
+        self.val_losses = val_losses
+        self.train_accuracies = train_accuracies
+        self.val_accuracies = val_accuracies
+
+        self.train_loader = train_loader
+        self.val_loader = val_loader
+        self.criterion = criterion
+        self.optimizer = optimizer
+        self.n_epochs = n_epochs
+
+    def fit_binary(
+        self,
+        train_loader,
+        val_loader,
+        criterion,
+        optimizer,
+        device,
+        n_epochs=100,
+        patience=15,
+        save_path="model.pt",
+    ):
+        best_val_loss = float("inf")
+        early_stop_counter = 0
+
+        train_losses, val_losses, train_accuracies, val_accuracies = [], [], [], []
+        for epoch in (pbar := tqdm(range(n_epochs), desc="Epoch")):
+            training_loss, training_correct, n_samples = 0, 0, 0
+
+            self.train()
+            for batch_idx, (data, label) in enumerate(train_loader):
+                data = data.to(device)
+                label = label.to(
+                    device
+                ).float()  # Cast label to float for BCEWithLogitsLoss
+                output = self.forward(data)
+
+                # Squeeze the output to remove the extra dimension
+                output = output.squeeze(1)
+
+                loss = criterion(output, label)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                training_loss += loss.item()
+                pred = (
+                    torch.sigmoid(output) > 0.5
+                ).float()  # Apply threshold to get binary predictions
+                training_correct += pred.eq(label.view_as(pred)).sum().item()
+                n_samples += len(label)
+
+            # Calculate average training loss and accuracy
+            avg_train_acc = training_correct / n_samples
+            train_losses.append(training_loss)
+            train_accuracies.append(avg_train_acc)
+
+            self.eval()
+            val_loss, val_correct, n_samples = 0, 0, 0
+            with torch.no_grad():
+                for data, label in val_loader:
+                    data = data.to(device)
+                    label = label.to(
+                        device
+                    ).float()  # Cast label to float for BCEWithLogitsLoss
+                    output = self.forward(data)
+
+                    # Squeeze the output to remove the extra dimension
+                    output = output.squeeze(1)
+
+                    loss = criterion(output, label)
+                    val_loss += loss.item()
+                    pred = (
+                        torch.sigmoid(output) > 0.5
+                    ).float()  # Apply threshold to get binary predictions
+                    val_correct += pred.eq(label.view_as(pred)).sum().item()
+                    n_samples += len(label)
+
+            # Calculate average validation loss and accuracy
+            avg_val_acc = val_correct / n_samples
+            val_losses.append(val_loss)
+            val_accuracies.append(avg_val_acc)
+
+            pbar.set_postfix(
+                {
+                    "Train loss": training_loss,
+                    "Train acc": avg_train_acc,
+                    "Val loss": val_loss,
+                    "Val acc": avg_val_acc,
+                }
+            )
+
+            # Early stopping check
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 early_stop_counter = 0
@@ -208,6 +301,56 @@ class AudioCNN(nn.Module):
 
         return pred_list, label_list
 
+    # def predict_with_prob(self, data_loader, device):
+    #     pred_list = []
+    #     prob_list = []
+    #     label_list = []
+
+    #     # for j, (audio, label) in enumerate(tqdm(data_loader)):
+    #     for j, (audio, label) in enumerate(data_loader):
+    #         audio = audio.to(device)
+    #         label = label.to(device)
+    #         output = self.forward(audio)
+    #         # loss = criterion(output, label)
+
+    #         # Get predicted probabilities
+    #         out_prob = F.softmax(output, dim=1)
+
+    #         # Get prediction with np.argmax
+    #         pred = output.argmax(dim=1, keepdim=True)
+
+    #         pred = pred.detach().cpu().numpy().reshape(-1)
+    #         truth = label.detach().cpu().numpy().reshape(-1)
+    #         prob = out_prob.detach().cpu().numpy().reshape(-1)
+
+    #         pred_list.append(pred)
+    #         prob_list.append(prob)
+    #         label_list.append(truth)
+
+    #     return pred_list, prob_list, label_list
+
+    def predict_binary(self, data_loader, device, threshold=0.5):
+        pred_list = []
+        out_prob_list = []
+        label_list = []
+
+        for j, (audio, label) in tqdm(enumerate(data_loader)):
+            audio = audio.to(device)
+            label = label.to(device)
+            output = self.forward(audio)
+
+            probs = torch.sigmoid(output)
+            pred = (probs >= threshold).long()  # accept by threshold of prob
+            probs = probs.detach().cpu().numpy().reshape(-1)
+            pred = pred.detach().cpu().numpy().reshape(-1)
+            truth = label.detach().cpu().numpy().reshape(-1)
+
+            pred_list.append(pred)
+            out_prob_list.append(probs)
+            label_list.append(truth)
+
+        return pred_list, out_prob_list, label_list
+
 
 class BaseCNN(AudioCNN):
     def __init__(self, num_classes=10):
@@ -232,6 +375,8 @@ class BaseCNN(AudioCNN):
 
         self.dropout = nn.Dropout(0.5)  # Dropout layer to reduce overfitting
 
+    # conv->relu->conv->relu->flatten
+    # dropout->fc->dropout->fc
     def forward(self, x):
         # Add a channel dimension (N x 1 x 17 x 216)
         x = x.unsqueeze(1)
