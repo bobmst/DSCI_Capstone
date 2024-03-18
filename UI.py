@@ -60,8 +60,13 @@ def main():
     learning_rate = float(algo["params"]["learning_rate"])
 
     model_dir = "./model/auth/app"
+    if not os.path.exists(model_dir):
+        os.makedirs(model_dir)
     model_save_path = os.path.join(model_dir, "demo.pkl")
+
     demo_model_path = "./model/auth/demo"
+    if not os.path.exists(demo_model_path):
+        os.makedirs(demo_model_path)
 
     device = get_cuda_device()
 
